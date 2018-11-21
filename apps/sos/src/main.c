@@ -835,8 +835,14 @@ int main(void) {
     alarm_config_t alarm_config;
     
     //TODO fix cap counting
-    start_process("alarm", _sos_ipc_ep_cap, &alarm, 1); 
-    start_process("web", _sos_ipc_ep_cap, &web, 0); 
+    start_process("alarm", _sos_ipc_ep_cap, &alarm, 1);
+#if defined(CONFIG_ATTACK)
+    printf("initialize web with 1 thread\n");
+    start_process("web", _sos_ipc_ep_cap, &web, 1);
+    printf("finish setup web with 1 thread\n");
+#else
+    start_process("web", _sos_ipc_ep_cap, &web, 0);
+#endif
     start_process("temp_control", _sos_ipc_ep_cap, &temp_control, 1); 
     start_process("proxy", _sos_ipc_ep_cap, &fan, 1);
     start_process("proxy", _sos_ipc_ep_cap, &sensor, 1);

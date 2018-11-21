@@ -97,7 +97,7 @@ int main(void) {
 
     while(1) {
         msg = seL4_MessageInfo_new(0, 0, 0, 1);
-        seL4_SetMR(0, 1); /* Recieve Packet */
+        seL4_SetMR(0, 1); /* Receive Packet */
 
         msg = seL4_Call(config->tc_cap, msg);
 

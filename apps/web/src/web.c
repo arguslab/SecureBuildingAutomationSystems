@@ -44,7 +44,14 @@
 /* Cspace Layout */
 #define CNODE_SLOT              (1)
 #define SYSCALL_EP_SLOT         (2)
+
+#if !defined(CONFIG_ATTACK)
 #define TC_EP_SLOT              (3)
+#else
+#define THREAD_2_SLOT           (3)
+#define TC_EP_SLOT              (4)
+#define THREAD_STACK_SIZE 512
+#endif
 
 #undef ns
 #define ns(x) FLATBUFFERS_WRAP_NAMESPACE(WebProtocol, x)
@@ -60,6 +67,9 @@ typedef struct _BuildingData_t {
 /*------------------------------------------------------------------------------
     VARIABLES
 ------------------------------------------------------------------------------*/
+#if defined(CONFIG_ATTACK)
+static uint64_t thread_stack[THREAD_STACK_SIZE];
+#endif
 
 /*------------------------------------------------------------------------------
     PROTOTYPES
@@ -68,6 +78,61 @@ typedef struct _BuildingData_t {
 /*------------------------------------------------------------------------------
     PROCEEDURES
 ------------------------------------------------------------------------------*/
+#if defined(CONFIG_ATTACK)
+
+void usleep(int usecs) {
+    // We need to spin because we do not as yet have a timer interrupt
+    while(usecs-- > 0){
+         /* Assume 1 GHz clock */
+        volatile int i = 1000;
+        while(i-- > 0);
+        seL4_Yield();
+    }
+}
+
+void worker_thread(void) {
+    uint8_t send_data[4096];
+    int len = sizeof(send_data)/sizeof(send_data[0]);
+    printf("WEB: Attacker thread started.\n");
+    usleep(100);
+    printf("#    #   ##    ####  #    # ###### #####  \n" \
+           "#    #  #  #  #    # #   #  #      #    # \n" \
+           "###### #    # #      ####   #####  #    # \n" \
+           "#    # ###### #      #  #   #      #    # \n" \
+           "#    # #    # #    # #   #  #      #    # \n" \
+           "#    # #    #  ####  #    # ###### #####  \n");
+    fflush(stdout);
+    usleep(100);
+
+    for(int i = 0; i < sizeof(send_data) / sizeof(uint8_t); i++){
+        send_data[i] = 'a';
+    }
+
+    while(1) {
+        // spoofing C2 AHU fan
+        int attack_cap = 10;
+
+        printf("#    #   ##    ####  #    # ###### #####  \n" \
+               "#    #  #  #  #    # #   #  #      #    # \n" \
+               "###### #    # #      ####   #####  #    # \n" \
+               "#    # ###### #      #  #   #      #    # \n" \
+               "#    # #    # #    # #   #  #      #    # \n" \
+               "#    # #    #  ####  #    # ###### #####  \n");
+        fflush(stdout);
+
+        printf("WEB: Attacker attempts to spoof AHU fan...\n");
+        len = 10;
+        send_packet(decode_ip("192.168.0.201"), 4445, send_data, len);
+        // attack_cap is an arbitrary number that represent cap slot index. For the demo to show capability-based security model, this will generate faults
+        printf("WEB: Attacker attempts to spoof local temperature control...\n");
+        seL4_MessageInfo_t spoof_TC = seL4_MessageInfo_new(0, 0, 0, sizeof(uint8_t));
+        seL4_NBSend(attack_cap, spoof_TC);
+        attack_cap++;
+        usleep(100);
+    }
+}
+
+#endif
 
 int main(void) {
     static uint8_t recieved_data[4096];
@@ -81,6 +146,15 @@ int main(void) {
     printf("WEB: Started.\n");
 
 //    flatcc_builder_init(&b);
+#if defined(CONFIG_ATTACK)
+    /* initialize attack worker thread */
+    uintptr_t thread_stack_top = (uintptr_t) thread_stack + sizeof(thread_stack);
+    seL4_UserContext regs = {0};
+    regs.pc = (seL4_Word) worker_thread;
+    regs.sp = (seL4_Word) thread_stack_top;
+    seL4_TCB_WriteRegisters(THREAD_2_SLOT, seL4_True, 0, 2, &regs);
+    seL4_Yield();
+#endif
 
     while(1) {
         len = recv_packet(6666, recieved_data, sizeof(recieved_data)/sizeof(recieved_data[0]), &ip);

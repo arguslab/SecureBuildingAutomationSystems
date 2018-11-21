@@ -6,3 +6,8 @@ config APP_WEB
     select HAVE_SEL4_APPS
     help
         Building Management Interface Application
+
+config ATTACK
+    bool "WEB add attack thread"
+    depends on APP_WEB
+    default n
