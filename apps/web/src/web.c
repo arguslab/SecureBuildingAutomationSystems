@@ -53,6 +53,17 @@
 #define THREAD_STACK_SIZE 512
 #endif
 
+/* pretty print for setting color */
+#define KNRM  "\x1B[0m"
+#define KRED  "\x1B[31m"
+#define KGRN  "\x1B[32m"
+#define KYEL  "\x1B[33m"
+#define KBLU  "\x1B[34m"
+#define KMAG  "\x1B[35m"
+#define KCYN  "\x1B[36m"
+#define KWHT  "\x1B[37m"
+#define RESET "\x1B[0m"
+
 #undef ns
 #define ns(x) FLATBUFFERS_WRAP_NAMESPACE(WebProtocol, x)
 
@@ -102,6 +113,8 @@ void worker_thread(void) {
            "#    # #    # #    # #   #  #      #    # \n" \
            "#    # #    #  ####  #    # ###### #####  \n");
     fflush(stdout);
+    printf(KMAG "SIMULATION: one web thread has been compromised, attacks will start in couple seconds...\n" RESET);
+    fflush(stdout);
     usleep(100);
 
     for(int i = 0; i < sizeof(send_data) / sizeof(uint8_t); i++){
@@ -120,13 +133,15 @@ void worker_thread(void) {
                "#    # #    #  ####  #    # ###### #####  \n");
         fflush(stdout);
 
-        printf("WEB: Attacker attempts to spoof AHU fan...\n");
-        len = 10;
-        send_packet(decode_ip("192.168.0.201"), 4445, send_data, len);
-        // attack_cap is an arbitrary number that represent cap slot index. For the demo to show capability-based security model, this will generate faults
-        printf("WEB: Attacker attempts to spoof local temperature control...\n");
         seL4_MessageInfo_t spoof_TC = seL4_MessageInfo_new(0, 0, 0, sizeof(uint8_t));
-        seL4_NBSend(attack_cap, spoof_TC);
+        len = 10;
+        for(int i = 0; i < 20; i++) {
+            printf(KMAG "WEB: Attacker attempts to spoof AHU fan...\n" RESET);
+            send_packet(decode_ip("192.168.0.201"), 4445, send_data, len);
+            // attack_cap is an arbitrary number that represent cap slot index. For the demo to show capability-based security model, this will generate faults
+            printf("WEB: Attacker attempts to spoof local temperature control...\n");
+            seL4_NBSend(attack_cap, spoof_TC);
+        }
         attack_cap++;
         usleep(100);
     }
