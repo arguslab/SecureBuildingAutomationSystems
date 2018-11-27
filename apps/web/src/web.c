@@ -179,6 +179,12 @@ int main(void) {
             continue;
         }
 
+        /* should use the union */
+        // union {
+        //     seL4_Word u;
+        //     float     f;
+        // } desiredTemp;
+
         float desiredTemp = ns(BuildingConfig_desiredTemp(config));
         printf("WEB: desiredTemp=%f\n", desiredTemp);
 
@@ -211,9 +217,10 @@ int main(void) {
 //        void *buffer = flatcc_builder_get_direct_buffer(&b, &len);
         
         seL4_Word temp = seL4_GetMR(0);
+        float currentTemp = *(float *)&temp;
 
         BuildingData_t data = {
-            .currentTemp = temp,
+            .currentTemp = currentTemp,
             .cooling = seL4_GetMR(1),
             .heating = seL4_GetMR(2),
             .alarm = seL4_GetMR(3)

@@ -121,6 +121,11 @@ void control_update(void) {
 
 
 void worker_thread(void) {
+    /* should use the union */
+    // union {
+    //     seL4_Word u;
+    //     float     f;
+    // } raw_setpoint;
     seL4_Word raw_setpoint;
     seL4_MessageInfo_t msg;
     seL4_Word badge;
@@ -135,7 +140,7 @@ void worker_thread(void) {
                 msg = seL4_MessageInfo_new(0, 0, 0, 1);
                 raw_setpoint = seL4_GetMR(1);
                 setpoint = *(float *)&raw_setpoint;
-                seL4_SetMR(0, current_temp);
+                seL4_SetMR(0, *(seL4_Word *)&current_temp);
                 seL4_Reply(msg);
 
                 /* Update the system with the new setpoint */
@@ -143,7 +148,7 @@ void worker_thread(void) {
                 break;
             case GetCurrentTemp:
                 msg = seL4_MessageInfo_new(0, 0, 0, 4);
-                seL4_SetMR(0, current_temp);
+                seL4_SetMR(0, *(seL4_Word *)&current_temp);
                 seL4_SetMR(1, fan_status);
                 seL4_SetMR(2, !fan_status); /* Web assumes fan and heater are controller independently. */
                 seL4_SetMR(3, alarm_status);
